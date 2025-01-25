@@ -1,0 +1,26 @@
+{
+  "name": "technical-indicators-wasm",
+  "version": "1.0.0",
+  "description": "A Rust-based indicator and Charts library compiled to WebAssembly.",
+  "main": "pkg/technical_indicators_wasm.js",
+  "scripts": {
+    "build": "wasm-pack build --target web"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/C9up/indicators-wasm.git"
+  },
+  "keywords": ["indicator", "kagi", "renko", "chart", "sma", "dmi", "ichimoku", "ema", "rsi", "smi", "trends meter", "bollinger bands", "wasm", "rust"],
+  "author": "Kaen25 <kaen25@gmail.com>",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/C9up/technical-indicators-wasm/issues"
+  },
+  "homepage": "https://github.com/C9up/technical-indicators-wasm",
+  "files": [
+    "pkg/technical_indicators_wasm.d.ts",
+    "pkg/technical_indicators_wasm.js",
+    "pkg/technical_indicators_wasm_bg.wasm",
+    "pkg/technical_indicators_wasm_bg.wasm.d.ts"
+  ]
+}
