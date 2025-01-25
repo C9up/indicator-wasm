@@ -2,11 +2,13 @@ use wasm_bindgen::prelude::*;
 use crate::utils::smooth;
 
 #[wasm_bindgen]
-struct DMIResult {
+pub struct DMIResult {
     plus_di: Vec<f64>,
     minus_di: Vec<f64>,
     adx: Vec<f64>,
 }
+
+
 #[wasm_bindgen]
 pub struct DirectionalMovementIndex {
     highs: Vec<f64>,
@@ -15,8 +17,15 @@ pub struct DirectionalMovementIndex {
 }
 #[wasm_bindgen]
 impl DirectionalMovementIndex {
-
     #[wasm_bindgen(constructor)]
+    pub fn new(highs: Vec<f64>, lows: Vec<f64>, closes: Vec<f64>) -> Self {
+        DirectionalMovementIndex {
+            highs,
+            lows,
+            closes,
+        }
+    }
+
     pub fn period(&mut self, period: usize) -> DMIResult {
 
         let len = self.highs.len();
