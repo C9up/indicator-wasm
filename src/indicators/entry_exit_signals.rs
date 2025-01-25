@@ -15,6 +15,7 @@ pub struct EntryExitSignals {
 
 #[wasm_bindgen]
 impl EntryExitSignals {
+
     #[wasm_bindgen(constructor)]
     pub fn new(prices: Vec<f64>) -> EntryExitSignals {
         EntryExitSignals {

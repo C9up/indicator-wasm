@@ -15,6 +15,8 @@ pub struct DirectionalMovementIndex {
 }
 #[wasm_bindgen]
 impl DirectionalMovementIndex {
+
+    #[wasm_bindgen(constructor)]
     pub fn period(&mut self, period: usize) -> DMIResult {
 
         let len = self.highs.len();

@@ -7,6 +7,8 @@ pub struct RelativeStrengthIndex {
 
 #[wasm_bindgen]
 impl RelativeStrengthIndex {
+
+    #[wasm_bindgen(constructor)]
     pub fn new(prices: Vec<f64>) -> Self {
         RelativeStrengthIndex {
             prices,

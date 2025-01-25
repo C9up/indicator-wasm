@@ -18,6 +18,8 @@ pub struct IchimokuResult {
 
 #[wasm_bindgen]
 impl Ichimoku {
+
+    #[wasm_bindgen(constructor)]
     pub fn new(high_prices: Vec<f64>, low_prices: Vec<f64>, close_prices: Vec<f64>) -> Self {
         Ichimoku {
             high_prices,

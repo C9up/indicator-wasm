@@ -8,6 +8,8 @@ pub struct ParabolicSar {
 
 #[wasm_bindgen]
 impl ParabolicSar {
+
+    #[wasm_bindgen(constructor)]
     pub fn new(high_prices: Vec<f64>, low_prices: Vec<f64>) -> Self {
         ParabolicSar {
             high_prices,

@@ -12,6 +12,8 @@ pub struct TrendsMeter {
 
 #[wasm_bindgen]
 impl TrendsMeter {
+
+    #[wasm_bindgen(constructor)]
     pub fn new(
         prices: Vec<f64>,
     ) -> Self {

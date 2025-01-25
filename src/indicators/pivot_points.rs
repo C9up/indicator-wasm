@@ -18,6 +18,8 @@ pub struct Pivot {
 
 #[wasm_bindgen]
 impl Pivot {
+
+    #[wasm_bindgen(constructor)]
     pub fn new(high: f64, low: f64, close: f64) -> Self {
         Pivot { high, low, close }
     }

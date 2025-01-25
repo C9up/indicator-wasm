@@ -29,6 +29,8 @@ pub struct StochasticOscillator {
 
 #[wasm_bindgen]
 impl StochasticOscillator {
+
+    #[wasm_bindgen(constructor)]
     pub fn new(highs: Vec<f64>, lows: Vec<f64>, closes: Vec<f64>) -> Self {
         StochasticOscillator {
             highs,

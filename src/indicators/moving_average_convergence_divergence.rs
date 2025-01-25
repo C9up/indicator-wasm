@@ -17,6 +17,7 @@ pub struct MACDResult {
 
 #[wasm_bindgen]
 impl MovingAverageConvergenceDivergence {
+    #[wasm_bindgen(constructor)]
     pub fn new(prices: Vec<f64>) -> Self {
         MovingAverageConvergenceDivergence {
             prices

@@ -18,6 +18,8 @@ pub struct SupportResistance {
 
 #[wasm_bindgen]
 impl SupportResistance {
+
+    #[wasm_bindgen(constructor)]
     #[wasm_bindgen(constructor)]
     pub fn new(prices: Vec<f64>) -> SupportResistance {
         let mut sr = SupportResistance {
