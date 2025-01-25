@@ -2,10 +2,28 @@ use wasm_bindgen::prelude::*;
 
 // Define a struct to represent trade signals
 #[wasm_bindgen]
-struct Signal {
+pub struct Signal {
     signal_type: String, // "entry" or "exit"
     price: f64,
     index: usize,
+}
+
+#[wasm_bindgen]
+impl Signal {
+    #[wasm_bindgen(getter)]
+    pub fn signal_type(&self) -> String {
+        self.signal_type.clone()
+    }
+
+    #[wasm_bindgen(getter)]
+    pub fn price(&self) -> f64 {
+        self.price
+    }
+
+    #[wasm_bindgen(getter)]
+    pub fn index(&self) -> usize {
+        self.index
+    }
 }
 
 #[wasm_bindgen]

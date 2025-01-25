@@ -17,6 +17,34 @@ pub struct IchimokuResult {
 }
 
 #[wasm_bindgen]
+impl IchimokuResult {
+    #[wasm_bindgen(getter)]
+    pub fn tenkan_sen(&self) -> Vec<f64> {
+        self.tenkan_sen.clone()
+    }
+
+    #[wasm_bindgen(getter)]
+    pub fn kijun_sen(&self) -> Vec<f64> {
+        self.kijun_sen.clone()
+    }
+
+    #[wasm_bindgen(getter)]
+    pub fn senkou_span_a(&self) -> Vec<f64> {
+        self.senkou_span_a.clone()
+    }
+
+    #[wasm_bindgen(getter)]
+    pub fn senkou_span_b(&self) -> Vec<f64> {
+        self.senkou_span_b.clone()
+    }
+
+    #[wasm_bindgen(getter)]
+    pub fn chikou_span(&self) -> Vec<f64> {
+        self.chikou_span.clone()
+    }
+}
+
+#[wasm_bindgen]
 impl Ichimoku {
 
     #[wasm_bindgen(constructor)]

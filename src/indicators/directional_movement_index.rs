@@ -8,6 +8,23 @@ pub struct DMIResult {
     adx: Vec<f64>,
 }
 
+#[wasm_bindgen]
+impl DMIResult {
+    #[wasm_bindgen(getter)]
+    pub fn plus_di(&self) -> Vec<f64> {
+        self.plus_di.clone()
+    }
+
+    #[wasm_bindgen(getter)]
+    pub fn minus_di(&self) -> Vec<f64> {
+        self.minus_di.clone()
+    }
+
+    #[wasm_bindgen(getter)]
+    pub fn adx(&self) -> Vec<f64> {
+        self.adx.clone()
+    }
+}
 
 #[wasm_bindgen]
 pub struct DirectionalMovementIndex {
