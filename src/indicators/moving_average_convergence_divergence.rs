@@ -5,6 +5,7 @@ use crate::utils;
 pub struct MovingAverageConvergenceDivergence {
     prices: Vec<f64>,
 }
+
 #[wasm_bindgen]
 pub struct MACDResult {
     #[wasm_bindgen(getter_with_clone)]
