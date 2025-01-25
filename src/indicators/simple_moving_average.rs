@@ -7,6 +7,8 @@ pub struct SimpleMovingAverage {
 
 #[wasm_bindgen]
 impl SimpleMovingAverage {
+
+    #[wasm_bindgen(constructor)]
     pub fn new(prices: Vec<f64>) -> Self {
         SimpleMovingAverage {
             prices

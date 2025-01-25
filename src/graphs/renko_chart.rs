@@ -11,6 +11,7 @@ pub struct RenkoChart {
 
 #[wasm_bindgen]
 impl RenkoChart {
+    #[wasm_bindgen(constructor)]
     pub fn new(brick_size: f64, prices: Vec<f64>) -> Self {
         RenkoChart {
             brick_size,

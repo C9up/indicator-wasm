@@ -8,6 +8,8 @@ pub struct ExponentialMovingAverage {
 
 #[wasm_bindgen]
 impl ExponentialMovingAverage {
+
+    #[wasm_bindgen(constructor)]
     pub fn new(prices: Vec<f64>) -> Self {
         ExponentialMovingAverage {
             prices

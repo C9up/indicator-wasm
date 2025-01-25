@@ -15,6 +15,8 @@ pub struct BollingerBandsResult {
 
 #[wasm_bindgen]
 impl BollingerBands {
+
+    #[wasm_bindgen(constructor)]
     pub fn new(prices: Vec<f64>) -> Self {
         BollingerBands {
             prices

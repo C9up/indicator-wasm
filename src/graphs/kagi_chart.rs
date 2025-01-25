@@ -10,6 +10,7 @@ pub struct KagiChart {
 
 #[wasm_bindgen]
 impl KagiChart {
+    #[wasm_bindgen(constructor)]
     pub fn new(prices: Vec<f64>, reversal_amount: f64) -> Self {
         KagiChart {
             prices,
