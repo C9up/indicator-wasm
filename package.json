@@ -1,6 +1,6 @@
 {
   "name": "technical-indicators-wasm",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "A Rust-based indicator and Charts library compiled to WebAssembly.",
   "main": "pkg/technical_indicators_wasm.js",
   "scripts": {

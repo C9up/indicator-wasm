@@ -2,22 +2,32 @@ use wasm_bindgen::prelude::*;
 
 #[wasm_bindgen]
 pub struct PivotPoints {
-    pivot: f64,
-    resistance1: f64,
-    resistance2: f64,
-    support1: f64,
-    support2: f64,
+    pub pivot: f64,
+    pub resistance1: f64,
+    pub resistance2: f64,
+    pub support1: f64,
+    pub support2: f64,
 }
 
 #[wasm_bindgen]
-impl PivotPoints {
+pub struct Pivot {
+    high: f64,
+    low: f64,
+    close: f64,
+}
+
+#[wasm_bindgen]
+impl Pivot {
     pub fn new(high: f64, low: f64, close: f64) -> Self {
-        // Calculate the pivot point and support/resistance levels
-        let pivot = (high + low + close) / 3.0;
-        let resistance1 = (2.0 * pivot) - low;
-        let support1 = (2.0 * pivot) - high;
-        let resistance2 = pivot + (high - low);
-        let support2 = pivot - (high - low);
+        Pivot { high, low, close }
+    }
+
+    pub fn calculate(&self) -> PivotPoints {
+        let pivot = (self.high + self.low + self.close) / 3.0;
+        let resistance1 = (2.0 * pivot) - self.low;
+        let support1 = (2.0 * pivot) - self.high;
+        let resistance2 = pivot + (self.high - self.low);
+        let support2 = pivot - (self.high - self.low);
 
         PivotPoints {
             pivot,
@@ -26,25 +36,5 @@ impl PivotPoints {
             support1,
             support2,
         }
-    }
-
-    pub fn get_pivot(&self) -> f64 {
-        self.pivot
-    }
-
-    pub fn get_resistance1(&self) -> f64 {
-        self.resistance1
-    }
-
-    pub fn get_resistance2(&self) -> f64 {
-        self.resistance2
-    }
-
-    pub fn get_support1(&self) -> f64 {
-        self.support1
-    }
-
-    pub fn get_support2(&self) -> f64 {
-        self.support2
     }
 }
