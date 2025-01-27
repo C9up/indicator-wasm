@@ -1,60 +1,68 @@
-use serde::Serialize;
-use serde::Deserialize;
 use wasm_bindgen::prelude::*;
+use serde::{Serialize, Deserialize};
 
-#[derive(Deserialize)]
-struct MarketData {
-    low: f64,
-    high: f64,
-    open: f64,
-    close: f64,
-    volume: f64,
-    date: String,
+#[derive(Serialize, Deserialize)]
+pub struct MarketData {
+    pub low: f64,
+    pub high: f64,
+    pub open: f64,
+    pub close: f64,
+    pub volume: f64,
+    pub date: String, // Assuming date is a string for simplicity
 }
 
-#[derive(Serialize)]
-struct MarketDataResult {
-    low: Vec<f64>,
-    high: Vec<f64>,
-    open: Vec<f64>,
-    close: Vec<f64>,
-    volume: Vec<f64>,
-    date: Vec<String>,
+#[derive(Serialize, Deserialize)]
+pub struct MarketDataResult {
+    pub lows: Vec<f64>,
+    pub highs: Vec<f64>,
+    pub opens: Vec<f64>,
+    pub closes: Vec<f64>,
+    pub volumes: Vec<f64>,
+    pub dates: Vec<String>,
+}
+
+pub fn process_market_data(market_data: Vec<MarketData>) -> MarketDataResult {
+    let mut lows = Vec::new();
+    let mut highs = Vec::new();
+    let mut opens = Vec::new();
+    let mut closes = Vec::new();
+    let mut volumes = Vec::new();
+    let mut dates = Vec::new();
+
+    for item in market_data {
+        lows.push(item.low);
+        highs.push(item.high);
+        opens.push(item.open);
+        closes.push(item.close);
+        volumes.push(item.volume);
+        dates.push(item.date);
+    }
+
+    MarketDataResult {
+        lows,
+        highs,
+        opens,
+        closes,
+        volumes,
+        dates,
+    }
 }
 
 #[wasm_bindgen(js_name = lowHighOpenCloseVolumeDateToArray)]
 pub fn low_high_open_close_volume_date_to_array(data: JsValue) -> Result<JsValue, JsValue> {
-    // Deserialize the input data into a Vec<MarketData>
-    let market_data: Vec<MarketData> = serde_wasm_bindgen::from_value(data)?;
+    // Désérialiser les données d'entrée
+    let market_data: Vec<MarketData> = serde_wasm_bindgen::from_value(data)
+        .map_err(|err| JsValue::from_str(&format!("Failed to deserialize market data: {}", err)))?;
 
-    // Initialize vectors for each type of data
-    let mut low = Vec::new();
-    let mut high = Vec::new();
-    let mut open = Vec::new();
-    let mut close = Vec::new();
-    let mut volume = Vec::new();
-    let mut date = Vec::new();
+    // Appeler la logique métier
+    let result = process_market_data(market_data);
 
-    // Populate the vectors
-    for item in market_data {
-        low.push(item.low);
-        high.push(item.high);
-        open.push(item.open);
-        close.push(item.close);
-        volume.push(item.volume);
-        date.push(item.date);
-    }
+    // Sérialiser le résultat
+    serde_wasm_bindgen::to_value(&result)
+        .map_err(|err| JsValue::from_str(&format!("Failed to serialize result: {}", err)))
+}
 
-    // Create the result struct
-    let result = MarketDataResult {
-        low,
-        high,
-        open,
-        close,
-        volume,
-        date,
-    };
-
-    // Serialize the result struct into a JsValue
-    Ok(serde_wasm_bindgen::to_value(&result)?)
+pub fn low_high_open_close_volume_date_deserialize(segment: JsValue) -> MarketDataResult {
+    let market_data_result: MarketDataResult = serde_wasm_bindgen::from_value(segment).expect("Failed to deserialize market data result");
+    market_data_result
 }

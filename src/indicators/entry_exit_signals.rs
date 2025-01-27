@@ -43,12 +43,13 @@ impl EntryExitSignals {
 
     pub fn calculate(&mut self) -> Vec<Signal> {
         if self.prices.len() < 2 {
-            return vec![]; // Not enough data to calculate signals
+            // Log a warning or return an error in a real-world scenario
+            return vec![];
         }
 
         let mut signals = Vec::new();
-
         let mut trend_up = false;
+
         for i in 1..self.prices.len() {
             let prev_price = self.prices[i - 1];
             let current_price = self.prices[i];
@@ -73,5 +74,32 @@ impl EntryExitSignals {
         }
 
         signals
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_calculate_signals() {
+        let prices = vec![100.0, 105.0, 102.0, 107.0, 106.0];
+        let mut signals = EntryExitSignals::new(prices);
+        let result = signals.calculate();
+
+        assert_eq!(result.len(), 2);
+        assert_eq!(result[0].signal_type(), "entry");
+        assert_eq!(result[0].price(), 105.0);
+        assert_eq!(result[1].signal_type(), "exit");
+        assert_eq!(result[1].price(), 102.0);
+    }
+
+    #[test]
+    fn test_not_enough_data() {
+        let prices = vec![100.0];
+        let mut signals = EntryExitSignals::new(prices);
+        let result = signals.calculate();
+
+        assert_eq!(result.len(), 0);
     }
 }

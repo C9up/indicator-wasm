@@ -1,5 +1,5 @@
 use wasm_bindgen::prelude::*;
-use crate::utils;
+use crate::calculate_ema::calculate_ema;
 
 #[wasm_bindgen]
 pub struct MovingAverageConvergenceDivergence {
@@ -26,10 +26,6 @@ impl MovingAverageConvergenceDivergence {
     }
 
     pub fn period(&mut self, fast_period: usize, slow_period: usize, signal_period: usize) -> MACDResult {
-        let mut macd_line = Vec::new();
-        let mut signal_line = Vec::new();
-        let mut histogram = Vec::new();
-
         let len = self.prices.len();
         if len < fast_period || len < slow_period || len < signal_period {
             return MACDResult {
@@ -40,20 +36,26 @@ impl MovingAverageConvergenceDivergence {
         }
 
         // Calculate the fast and slow EMAs
-        let fast_ema = utils::calculate_ema(&self.prices, fast_period);
-        let slow_ema = utils::calculate_ema(&self.prices, slow_period);
+        let fast_ema = calculate_ema(&self.prices, fast_period);
+        let slow_ema = calculate_ema(&self.prices, slow_period);
+
+        // Pre-allocate memory for the MACD line
+        let mut macd_line = Vec::with_capacity(fast_ema.len());
 
         // Calculate the MACD Line
-        for i in 0..fast_ema.len() {
-            macd_line.push(fast_ema[i] - slow_ema[i]);
+        for (f, s) in fast_ema.iter().zip(&slow_ema) {
+            macd_line.push(f - s);
         }
 
         // Calculate the Signal Line (EMA of the MACD Line)
-        signal_line = utils::calculate_ema(&macd_line, signal_period);
+        let signal_line = calculate_ema(&macd_line, signal_period);
+
+        // Pre-allocate memory for the histogram
+        let mut histogram = Vec::with_capacity(macd_line.len());
 
         // Calculate the Histogram
-        for i in 0..macd_line.len() {
-            histogram.push(macd_line[i] - signal_line[i]);
+        for (m, s) in macd_line.iter().zip(&signal_line) {
+            histogram.push(m - s);
         }
 
         MACDResult {

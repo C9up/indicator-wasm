@@ -1,5 +1,5 @@
 use wasm_bindgen::prelude::*;
-use crate::utils::calculate_sma;
+use crate::calculate_sma::calculate_sma;
 
 #[wasm_bindgen]
 pub struct BollingerBands {

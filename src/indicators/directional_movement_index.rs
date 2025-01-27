@@ -1,6 +1,8 @@
 use wasm_bindgen::prelude::*;
-use crate::utils::smooth;
+use crate::low_high_open_close_volume_date_to_array::{low_high_open_close_volume_date_deserialize, low_high_open_close_volume_date_to_array};
+use crate::smooth::smooth;
 
+/// Represents the result of the Directional Movement Index (DMI) calculation.
 #[wasm_bindgen]
 pub struct DMIResult {
     plus_di: Vec<f64>,
@@ -10,72 +12,114 @@ pub struct DMIResult {
 
 #[wasm_bindgen]
 impl DMIResult {
+    /// Returns the +DI values as a vector of f64.
     #[wasm_bindgen(getter)]
     pub fn plus_di(&self) -> Vec<f64> {
         self.plus_di.clone()
     }
 
+    /// Returns the -DI values as a vector of f64.
     #[wasm_bindgen(getter)]
     pub fn minus_di(&self) -> Vec<f64> {
         self.minus_di.clone()
     }
 
+    /// Returns the ADX values as a vector of f64.
     #[wasm_bindgen(getter)]
     pub fn adx(&self) -> Vec<f64> {
         self.adx.clone()
     }
 }
 
+/// Represents the Directional Movement Index (DMI) calculator.
 #[wasm_bindgen]
 pub struct DirectionalMovementIndex {
     highs: Vec<f64>,
     lows: Vec<f64>,
-    closes: Vec<f64>
+    closes: Vec<f64>,
 }
+
 #[wasm_bindgen]
 impl DirectionalMovementIndex {
+    /// Creates a new `DirectionalMovementIndex` instance from a JavaScript object containing price data.
+    ///
+    /// # Arguments
+    /// * `prices` - A JavaScript object containing `highs`, `lows`, and `closes` arrays.
+    ///
+    /// # Errors
+    /// Returns an error if the input data is invalid (e.g., empty arrays or mismatched lengths).
     #[wasm_bindgen(constructor)]
-    pub fn new(highs: Vec<f64>, lows: Vec<f64>, closes: Vec<f64>) -> Self {
-        DirectionalMovementIndex {
-            highs,
-            lows,
-            closes,
+    pub fn new(prices: JsValue) -> Result<DirectionalMovementIndex, JsValue> {
+        let segment = low_high_open_close_volume_date_deserialize(low_high_open_close_volume_date_to_array(prices)
+            .expect("Failed to convert market data"));
+
+        // Validate input data
+        if segment.highs.is_empty() || segment.lows.is_empty() || segment.closes.is_empty() {
+            return Err(JsValue::from_str("Price arrays cannot be empty."));
         }
+        if segment.highs.len() != segment.lows.len() || segment.highs.len() != segment.closes.len() {
+            return Err(JsValue::from_str("Price arrays must have the same length."));
+        }
+
+        Ok(DirectionalMovementIndex {
+            highs: segment.highs,
+            lows: segment.lows,
+            closes: segment.closes,
+        })
     }
 
-    pub fn period(&mut self, period: usize) -> DMIResult {
-
+    /// Calculates the Directional Movement Index (DMI) for the given period.
+    ///
+    /// # Arguments
+    /// * `period` - The smoothing period for the DMI calculation.
+    ///
+    /// # Errors
+    /// Returns an error if the period is greater than the length of the price data.
+    pub fn period(&self, period: usize) -> Result<DMIResult, JsValue> {
         let len = self.highs.len();
         if len < period {
-            return DMIResult {
-                plus_di: Vec::new(),
-                minus_di: Vec::new(),
-                adx: Vec::new(),
-            };
+            return Err(JsValue::from_str("Period cannot be greater than the length of the price data."));
         }
 
-        let mut tr = vec![0.0; len]; // True Range
-        let mut plus_dm = vec![0.0; len]; // +DM
-        let mut minus_dm = vec![0.0; len]; // -DM
+        // Calculate True Range (TR), +DM, and -DM
+        let (tr, plus_dm, minus_dm) = (0..len)
+            .map(|i| {
+                if i == 0 {
+                    (0.0, 0.0, 0.0)
+                } else {
+                    let high = self.highs[i];
+                    let low = self.lows[i];
+                    let prev_close = self.closes[i - 1];
 
-        // Calculate True Range, +DM, and -DM
-        for i in 1..len {
-            let high = self.highs[i];
-            let low = self.lows[i];
-            let prev_close = self.closes[i - 1];
+                    let tr = (high - low).max((high - prev_close).abs()).max((low - prev_close).abs());
 
-            tr[i] = (high - low).max((high - prev_close).abs()).max((low - prev_close).abs());
+                    let up_move = high - self.highs[i - 1];
+                    let down_move = self.lows[i - 1] - low;
 
-            let up_move = high - self.highs[i - 1];
-            let down_move = self.lows[i - 1] - low;
+                    let plus_dm = if up_move > down_move && up_move > 0.0 {
+                        up_move
+                    } else {
+                        0.0
+                    };
 
-            if up_move > down_move && up_move > 0.0 {
-                plus_dm[i] = up_move;
-            }
-            if down_move > up_move && down_move > 0.0 {
-                minus_dm[i] = down_move;
-            }
-        }
+                    let minus_dm = if down_move > up_move && down_move > 0.0 {
+                        down_move
+                    } else {
+                        0.0
+                    };
+
+                    (tr, plus_dm, minus_dm)
+                }
+            })
+            .fold(
+                (Vec::with_capacity(len), Vec::with_capacity(len), Vec::with_capacity(len)),
+                |(mut tr, mut plus_dm, mut minus_dm), (tr_val, plus_dm_val, minus_dm_val)| {
+                    tr.push(tr_val);
+                    plus_dm.push(plus_dm_val);
+                    minus_dm.push(minus_dm_val);
+                    (tr, plus_dm, minus_dm)
+                },
+            );
 
         // Smooth +DM, -DM, and TR
         let smoothed_plus_dm = smooth(&plus_dm, period);
@@ -83,30 +127,37 @@ impl DirectionalMovementIndex {
         let smoothed_tr = smooth(&tr, period);
 
         // Calculate +DI and -DI
-        let mut plus_di = vec![0.0; len];
-        let mut minus_di = vec![0.0; len];
-
-        for i in period..len {
-            if smoothed_tr[i] > 0.0 {
-                plus_di[i] = 100.0 * (smoothed_plus_dm[i] / smoothed_tr[i]);
-                minus_di[i] = 100.0 * (smoothed_minus_dm[i] / smoothed_tr[i]);
-            }
-        }
+        let (plus_di, minus_di): (Vec<f64>, Vec<f64>) = (0..len)
+            .map(|i| {
+                if smoothed_tr[i] > 0.0 {
+                    (
+                        100.0 * (smoothed_plus_dm[i] / smoothed_tr[i]),
+                        100.0 * (smoothed_minus_dm[i] / smoothed_tr[i]),
+                    )
+                } else {
+                    (0.0, 0.0)
+                }
+            })
+            .unzip();
 
         // Calculate ADX
-        let mut dx = vec![0.0; len]; // Directional Movement Index
-        for i in period..len {
-            if plus_di[i] + minus_di[i] > 0.0 {
-                dx[i] = 100.0 * ((plus_di[i] - minus_di[i]).abs() / (plus_di[i] + minus_di[i]));
-            }
-        }
+        let adx = smooth(
+            &(period..len)
+                .map(|i| {
+                    if plus_di[i] + minus_di[i] > 0.0 {
+                        ((plus_di[i] - minus_di[i]).abs() / (plus_di[i] + minus_di[i])) * 100.0
+                    } else {
+                        0.0
+                    }
+                })
+                .collect::<Vec<f64>>(),
+            period,
+        );
 
-        let adx = smooth(&dx, period);
-
-        DMIResult {
+        Ok(DMIResult {
             plus_di,
             minus_di,
             adx,
-        }
+        })
     }
 }

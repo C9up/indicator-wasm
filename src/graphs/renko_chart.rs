@@ -2,79 +2,56 @@ use wasm_bindgen::prelude::*;
 
 #[wasm_bindgen]
 pub struct RenkoChart {
-    brick_size: f64,
     prices: Vec<f64>,
-    bricks: Vec<f64>,
-    last_brick: f64,
-    trend: i32, // 1 for uptrend, -1 for downtrend
 }
 
 #[wasm_bindgen]
 impl RenkoChart {
     #[wasm_bindgen(constructor)]
-    pub fn new(brick_size: f64, prices: Vec<f64>) -> Self {
-        RenkoChart {
-            brick_size,
-            prices,
-            bricks: Vec::new(),
-            last_brick: 0.0,
-            trend: 0, // Start with no trend
-        }
+    pub fn new(prices: Vec<f64>) -> Self {
+        RenkoChart { prices }
     }
 
-    pub fn calculate(&mut self) {
+    pub fn calculate(&mut self, brick_size: f64) -> Vec<f64> {
         if self.prices.is_empty() {
-            return; // No data to process
+            return vec![]; // No data to process
         }
 
-        // Initialize the first brick
-        self.last_brick = self.prices[0];
-        self.bricks.push(self.last_brick);
+        let mut bricks = Vec::new();
+        let mut last_brick = self.prices[0];
+        bricks.push(last_brick);
+
+        let mut trend: i32 = 0; // 1 for uptrend, -1 for downtrend
 
         for &price in &self.prices[1..] {
-            let price_diff = price - self.last_brick;
+            let price_diff = price - last_brick;
 
-            if self.trend >= 0 {
-                // Uptrend
-                if price_diff >= self.brick_size {
-                    let num_bricks = (price_diff / self.brick_size).floor() as i32;
-                    for _ in 0..num_bricks {
-                        self.last_brick += self.brick_size;
-                        self.bricks.push(self.last_brick);
-                    }
-                    self.trend = 1; // Confirm uptrend
-                } else if price_diff <= -self.brick_size {
-                    // Trend reversal to downtrend
-                    let num_bricks = (-price_diff / self.brick_size).floor() as i32;
-                    for _ in 0..num_bricks {
-                        self.last_brick -= self.brick_size;
-                        self.bricks.push(self.last_brick);
-                    }
-                    self.trend = -1; // Confirm downtrend
-                }
-            } else {
-                // Downtrend
-                if price_diff <= -self.brick_size {
-                    let num_bricks = (-price_diff / self.brick_size).floor() as i32;
-                    for _ in 0..num_bricks {
-                        self.last_brick -= self.brick_size;
-                        self.bricks.push(self.last_brick);
-                    }
-                    self.trend = -1; // Confirm downtrend
-                } else if price_diff >= self.brick_size {
-                    // Trend reversal to uptrend
-                    let num_bricks = (price_diff / self.brick_size).floor() as i32;
-                    for _ in 0..num_bricks {
-                        self.last_brick += self.brick_size;
-                        self.bricks.push(self.last_brick);
-                    }
-                    self.trend = 1; // Confirm uptrend
-                }
+            if (trend >= 0 && price_diff >= brick_size) || (trend < 0 && price_diff <= -brick_size) {
+                self.add_bricks(&mut bricks, &mut last_brick, price_diff, brick_size, trend);
+                trend = if price_diff >= brick_size { 1 } else { -1 };
+            } else if (trend >= 0 && price_diff <= -brick_size) || (trend < 0 && price_diff >= brick_size) {
+                self.add_bricks(&mut bricks, &mut last_brick, price_diff, brick_size, -trend);
+                trend = if price_diff >= brick_size { 1 } else { -1 };
             }
         }
+
+        bricks
     }
 
-    pub fn get_bricks(&self) -> Vec<f64> {
-        self.bricks.clone()
+    fn add_bricks(
+        &self,
+        bricks: &mut Vec<f64>,
+        last_brick: &mut f64,
+        price_diff: f64,
+        brick_size: f64,
+        trend: i32,
+    ) {
+        let num_bricks = (price_diff.abs() / brick_size).floor() as i32;
+        let step = brick_size * trend as f64;
+
+        for _ in 0..num_bricks {
+            *last_brick += step;
+            bricks.push(*last_brick);
+        }
     }
 }

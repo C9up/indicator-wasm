@@ -1,4 +1,5 @@
 use wasm_bindgen::prelude::*;
+use crate::smooth::smooth;
 
 #[wasm_bindgen]
 pub struct RelativeStrengthIndex {
@@ -7,43 +8,36 @@ pub struct RelativeStrengthIndex {
 
 #[wasm_bindgen]
 impl RelativeStrengthIndex {
-
     #[wasm_bindgen(constructor)]
     pub fn new(prices: Vec<f64>) -> Self {
-        RelativeStrengthIndex {
-            prices,
-        }
+        RelativeStrengthIndex { prices }
     }
 
-    pub fn period(&mut self, period: usize) -> Vec<f64> {
-
-        let mut rsi_values = Vec::new();
-
+    /// Calculate the RSI for a given period
+    pub fn period(&self, period: usize) -> Vec<f64> {
         let len = self.prices.len();
         if len < period {
-            return vec![]; // Not enough data to calculate RSI
+            return Vec::new(); // Not enough data to calculate RSI
         }
 
-        let mut gains = Vec::new();
-        let mut losses = Vec::new();
+        let mut rsi_values = Vec::with_capacity(len - period);
+        let mut avg_gain = 0.0;
+        let mut avg_loss = 0.0;
 
-        // Calculate initial gains and losses
-        for i in 1..len {
+        // Calculate initial average gains and losses
+        for i in 1..=period {
             let change = self.prices[i] - self.prices[i - 1];
             if change > 0.0 {
-                gains.push(change);
-                losses.push(0.0);
+                avg_gain += change;
             } else {
-                gains.push(0.0);
-                losses.push(-change);
+                avg_loss += -change;
             }
         }
 
-        // Calculate initial average gain and average loss
-        let mut avg_gain: f64 = gains[0..period].iter().sum::<f64>() / period as f64;
-        let mut avg_loss: f64 = losses[0..period].iter().sum::<f64>() / period as f64;
+        avg_gain /= period as f64;
+        avg_loss /= period as f64;
 
-        // Calculate initial RSI
+        // Calculate the first RSI value
         let rs = if avg_loss == 0.0 {
             100.0
         } else {
@@ -52,11 +46,20 @@ impl RelativeStrengthIndex {
         let rsi = 100.0 - (100.0 / (1.0 + rs));
         rsi_values.push(rsi);
 
-        // Calculate RSI for the remaining prices
-        for i in period..(len - 1) {
-            avg_gain = ((avg_gain * (period - 1) as f64) + gains[i]) / period as f64;
-            avg_loss = ((avg_loss * (period - 1) as f64) + losses[i]) / period as f64;
+        // Calculate RSI for the remaining data using an incremental approach
+        for i in (period + 1)..len {
+            let change = self.prices[i] - self.prices[i - 1];
+            let (gain, loss) = if change > 0.0 {
+                (change, 0.0)
+            } else {
+                (0.0, -change)
+            };
 
+            // Update average gains and losses incrementally
+            avg_gain = ((avg_gain * (period - 1) as f64) + gain) / period as f64;
+            avg_loss = ((avg_loss * (period - 1) as f64) + loss) / period as f64;
+
+            // Calculate RSI
             let rs = if avg_loss == 0.0 {
                 100.0
             } else {
@@ -64,6 +67,18 @@ impl RelativeStrengthIndex {
             };
             let rsi = 100.0 - (100.0 / (1.0 + rs));
             rsi_values.push(rsi);
+        }
+
+        rsi_values
+    }
+
+    /// Calculate the RSI and apply smoothing if necessary
+    pub fn period_smoothed(&self, period: usize, smoothing_period: usize) -> Vec<f64> {
+        let rsi_values = self.period(period); // Calculate RSI
+
+        // Apply smoothing if smoothing_period > 0
+        if smoothing_period > 0 {
+            return smooth(&rsi_values, smoothing_period);
         }
 
         rsi_values

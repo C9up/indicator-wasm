@@ -1,6 +1,6 @@
-// src/indicator/smi.rs
 use wasm_bindgen::prelude::*;
-use crate::utils;
+use crate::calculate_ema::calculate_ema;
+use crate::low_high_open_close_volume_date_to_array::{low_high_open_close_volume_date_deserialize, low_high_open_close_volume_date_to_array};
 
 #[wasm_bindgen]
 pub struct StochasticMomentumIndex {
@@ -11,44 +11,51 @@ pub struct StochasticMomentumIndex {
 
 #[wasm_bindgen]
 impl StochasticMomentumIndex {
-
     #[wasm_bindgen(constructor)]
-    pub fn new(highs: Vec<f64>, lows: Vec<f64>, closes: Vec<f64>) -> Self {
+    pub fn new(prices: JsValue) -> Self {
+        let segment = low_high_open_close_volume_date_deserialize(low_high_open_close_volume_date_to_array(prices)
+            .expect("Failed to convert market data"));
         StochasticMomentumIndex {
-            highs,
-            lows,
-            closes
+            highs: segment.highs,
+            lows: segment.lows,
+            closes: segment.closes,
         }
     }
-
-    pub fn calculate(&mut self, period: usize, smoothing_period: usize) -> Vec<f64> {
-        let mut smi_values = Vec::new();
+    pub fn calculate(&self, period: usize, smoothing_period: usize) -> Vec<f64> {
         let len = self.highs.len();
-        if len < period || len < smoothing_period {
-            return vec![]; // Not enough data to calculate SMI
-        }
 
-        // Calculate midpoints and differences
-        let mut midpoints = Vec::new();
-        let mut diffs = Vec::new();
-        for i in 0..len {
-            let midpoint = (self.highs[i] + self.lows[i]) / 2.0;
-            midpoints.push(midpoint);
-            diffs.push(self.closes[i] - midpoint);
-        }
+        // Precompute high - low ranges to avoid redundant calculations
+        let high_low_ranges: Vec<f64> = self.highs.iter()
+            .zip(&self.lows)
+            .map(|(&high, &low)| high - low)
+            .collect();
+
+        // Calculate midpoints and differences in a single pass
+        let (midpoints, diffs): (Vec<f64>, Vec<f64>) = self.highs.iter()
+            .zip(&self.lows)
+            .zip(&self.closes)
+            .map(|((&high, &low), &close)| {
+                let midpoint = (high + low) / 2.0;
+                let diff = close - midpoint;
+                (midpoint, diff)
+            })
+            .unzip();
 
         // Smooth the diffs and high-low ranges
-        let smoothed_diffs = utils::calculate_ema(&diffs, smoothing_period);
-        let smoothed_ranges = utils::calculate_ema(
-            &self.highs.iter().zip(&self.lows).map(|(h, l)| h - l).collect::<Vec<f64>>(),
-            smoothing_period,
-        );
+        let smoothed_diffs = calculate_ema(&diffs, smoothing_period); // Pas de gestion d'erreur
+        let smoothed_ranges = calculate_ema(&high_low_ranges, smoothing_period); // Pas de gestion d'erreur
 
         // Calculate SMI
-        for i in 0..smoothed_diffs.len() {
-            let smi = (smoothed_diffs[i] / (smoothed_ranges[i] / 2.0)) * 100.0;
-            smi_values.push(smi);
-        }
+        let smi_values: Vec<f64> = smoothed_diffs.iter()
+            .zip(&smoothed_ranges)
+            .map(|(&diff, &range)| {
+                if range == 0.0 {
+                    0.0 // Avoid division by zero
+                } else {
+                    (diff / (range / 2.0)) * 100.0
+                }
+            })
+            .collect();
 
         smi_values
     }

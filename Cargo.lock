@@ -136,6 +136,7 @@ dependencies = [
 name = "technical-indicators-wasm"
 version = "1.0.0"
 dependencies = [
+ "js-sys",
  "serde",
  "serde-wasm-bindgen",
  "wasm-bindgen",
