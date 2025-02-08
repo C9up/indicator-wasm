@@ -4,5 +4,5 @@
 
 # Node.js
 /node_modules/
-/pkg/
+/dist/pkg
 .idea

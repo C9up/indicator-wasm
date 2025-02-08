@@ -32,7 +32,7 @@ jobs:
         run: npm install
 
       - name: Build with wasm-pack
-        run: wasm-pack build --target web
+        run: npm build
 
       - name: Publish to npm
         run: npm publish

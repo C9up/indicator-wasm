@@ -1,16 +1,39 @@
 {
   "name": "technical-indicators-wasm",
-  "version": "1.1.4",
+  "version": "1.2.0",
   "description": "A Rust-based indicator and Charts library compiled to WebAssembly.",
-  "main": "pkg/technical_indicators_wasm.js",
+  "type": "module",
+  "main": "dist/index.js",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "require": "./dist/index.js"
+    }
+  },
   "scripts": {
-    "build": "wasm-pack build --target web"
+    "build": "wasm-pack build --target web --out-dir dist/pkg/web && wasm-pack build --target nodejs --out-dir dist/pkg/node",
+    "test": "node tests/test.js"
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/C9up/indicators-wasm.git"
+    "url": "git+https://github.com/C9up/indicators-wasm.git"
   },
-  "keywords": ["indicator", "kagi", "renko", "chart", "sma", "dmi", "ichimoku", "ema", "rsi", "smi", "trends meter", "bollinger bands", "wasm", "rust"],
+  "keywords": [
+    "indicator",
+    "kagi",
+    "renko",
+    "chart",
+    "sma",
+    "dmi",
+    "ichimoku",
+    "ema",
+    "rsi",
+    "smi",
+    "trends meter",
+    "bollinger bands",
+    "wasm",
+    "rust"
+  ],
   "author": "Kaen25 <kaen25@gmail.com>",
   "license": "MIT",
   "bugs": {
@@ -18,9 +41,27 @@
   },
   "homepage": "https://github.com/C9up/technical-indicators-wasm",
   "files": [
-    "pkg/technical_indicators_wasm.d.ts",
-    "pkg/technical_indicators_wasm.js",
-    "pkg/technical_indicators_wasm_bg.wasm",
-    "pkg/technical_indicators_wasm_bg.wasm.d.ts"
-  ]
+    "pkg/index.js",
+    "pkg/web/technical_indicators_wasm.d.ts",
+    "pkg/web/technical_indicators_wasm.js",
+    "pkg/web/technical_indicators_wasm_bg.wasm",
+    "pkg/web/technical_indicators_wasm_bg.wasm.d.ts",
+    "pkg/nodejs/technical_indicators_wasm.d.ts",
+    "pkg/nodejs/technical_indicators_wasm.js",
+    "pkg/nodejs/technical_indicators_wasm_bg.wasm",
+    "pkg/nodejs/technical_indicators_wasm_bg.wasm.d.ts"
+  ],
+  "types": "./pkg/nodejs/technical_indicators_wasm.d.ts",
+  "directories": {
+    "doc": "doc",
+    "test": "tests"
+  },
+  "devDependencies": {
+    "@japa/assert": "^4.0.1",
+    "@japa/expect": "^3.0.3",
+    "@japa/file-system": "^2.3.2",
+    "@japa/runner": "^4.2.0",
+    "@japa/snapshot": "^2.0.8",
+    "undici": "^7.3.0"
+  }
 }
