@@ -21,7 +21,7 @@ impl StochasticMomentumIndex {
             closes: segment.closes,
         }
     }
-    pub fn calculate(&self, period: usize, smoothing_period: usize) -> Vec<f64> {
+    pub fn period(&self, period: usize, smoothing_period: usize) -> Vec<f64> {
         let len = self.highs.len();
 
         // Precompute high - low ranges to avoid redundant calculations
