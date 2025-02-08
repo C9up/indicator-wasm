@@ -6,5 +6,9 @@ A Rust-base Stocks indicators library compiled to WebAssembly
 npm install technical-indicators-wasm
 ```
 <hr>
-[npm-url]: https://www.npmjs.com/package/technical-indicators-wasm/v/latest 'npm'
+
+[![npm version][npm-image]][npm-url]
+
+[npm-image]: https://img.shields.io/npm/v/technical-indicators-wasm.svg?style=flat-square
+[npm-url]: https://npmjs.org/package/technical-indicators-wasm
 [license-url]: LICENSE.md
