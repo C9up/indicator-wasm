@@ -1,6 +1,6 @@
 {
   "name": "technical-indicators-wasm",
-  "version": "1.2.0",
+  "version": "1.2.2",
   "description": "A Rust-based indicator and Charts library compiled to WebAssembly.",
   "type": "module",
   "main": "dist/index.js",
@@ -41,15 +41,15 @@
   },
   "homepage": "https://github.com/C9up/technical-indicators-wasm",
   "files": [
-    "pkg/index.js",
-    "pkg/web/technical_indicators_wasm.d.ts",
-    "pkg/web/technical_indicators_wasm.js",
-    "pkg/web/technical_indicators_wasm_bg.wasm",
-    "pkg/web/technical_indicators_wasm_bg.wasm.d.ts",
-    "pkg/nodejs/technical_indicators_wasm.d.ts",
-    "pkg/nodejs/technical_indicators_wasm.js",
-    "pkg/nodejs/technical_indicators_wasm_bg.wasm",
-    "pkg/nodejs/technical_indicators_wasm_bg.wasm.d.ts"
+    "dist/index.js",
+    "dist/pkg/web/technical_indicators_wasm.d.ts",
+    "dist/pkg/web/technical_indicators_wasm.js",
+    "dist/pkg/web/technical_indicators_wasm_bg.wasm",
+    "dist/pkg/web/technical_indicators_wasm_bg.wasm.d.ts",
+    "dist/pkg/node/technical_indicators_wasm.d.ts",
+    "dist/pkg/node/technical_indicators_wasm.js",
+    "dist/pkg/node/technical_indicators_wasm_bg.wasm",
+    "dist/pkg/node/technical_indicators_wasm_bg.wasm.d.ts"
   ],
   "types": "./pkg/nodejs/technical_indicators_wasm.d.ts",
   "directories": {
