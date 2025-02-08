@@ -21,42 +21,49 @@ impl StochasticMomentumIndex {
             closes: segment.closes,
         }
     }
-    pub fn period(&self, period: usize, smoothing_period: usize) -> Vec<f64> {
+    pub fn period(
+        &self,
+        period_l: usize,
+        period_h: usize,
+        smoothing_period: usize,
+    ) -> Vec<f64> {
         let len = self.highs.len();
+        let mut smi_values = Vec::with_capacity(len);
 
-        // Precompute high - low ranges to avoid redundant calculations
-        let high_low_ranges: Vec<f64> = self.highs.iter()
-            .zip(&self.lows)
-            .map(|(&high, &low)| high - low)
-            .collect();
+        for i in 0..len {
+            // Check if there is enough data to apply the periods
+            if i < period_h - 1 || i < period_l - 1 {
+                smi_values.push(f64::NAN);
+            } else {
+                // Define the starting indices for the sliding windows
+                let start_h = if i + 1 < period_h { 0 } else { i + 1 - period_h };
+                let start_l = if i + 1 < period_l { 0 } else { i + 1 - period_l };
 
-        // Calculate midpoints and differences in a single pass
-        let (midpoints, diffs): (Vec<f64>, Vec<f64>) = self.highs.iter()
-            .zip(&self.lows)
-            .zip(&self.closes)
-            .map(|((&high, &low), &close)| {
-                let midpoint = (high + low) / 2.0;
-                let diff = close - midpoint;
-                (midpoint, diff)
-            })
-            .unzip();
+                // Calculate the highest value over period_h and the lowest value over period_l
+                let highest = self.highs[start_h..=i]
+                    .iter()
+                    .cloned()
+                    .fold(f64::NEG_INFINITY, f64::max);
+                let lowest = self.lows[start_l..=i]
+                    .iter()
+                    .cloned()
+                    .fold(f64::INFINITY, f64::min);
 
-        // Smooth the diffs and high-low ranges
-        let smoothed_diffs = calculate_ema(&diffs, smoothing_period); // Pas de gestion d'erreur
-        let smoothed_ranges = calculate_ema(&high_low_ranges, smoothing_period); // Pas de gestion d'erreur
+                // Compute the midpoint, the difference, and the range
+                let midpoint = (highest + lowest) / 2.0;
+                let diff = self.closes[i] - midpoint;
+                let range = highest - lowest;
 
-        // Calculate SMI
-        let smi_values: Vec<f64> = smoothed_diffs.iter()
-            .zip(&smoothed_ranges)
-            .map(|(&diff, &range)| {
-                if range == 0.0 {
-                    0.0 // Avoid division by zero
+                // Calculate the SMI value, avoiding division by zero
+                let value = if range == 0.0 {
+                    0.0
                 } else {
                     (diff / (range / 2.0)) * 100.0
-                }
-            })
-            .collect();
-
-        smi_values
+                };
+                smi_values.push(value);
+            }
+        }
+        // Apply EMA smoothing to the computed SMI series
+        calculate_ema(&smi_values, smoothing_period)
     }
 }
