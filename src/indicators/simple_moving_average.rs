@@ -1,39 +1,62 @@
+use crate::calculate_sma_helper::calculate_sma;
+use crate::{create_error, jsvalue_to_f64};
 use wasm_bindgen::prelude::*;
 
 #[wasm_bindgen]
-pub struct SimpleMovingAverage {
-    prices: Vec<f64>,
-}
+pub fn simple_moving_average(data: JsValue, period: usize) -> Result<Vec<f64>, JsValue> {
+    let vec_data = jsvalue_to_f64(data);
 
-#[wasm_bindgen]
-impl SimpleMovingAverage {
-    #[wasm_bindgen(constructor)]
-    pub fn new(prices: Vec<f64>) -> Self {
-        SimpleMovingAverage { prices }
+    if period == 0 {
+        return Err(create_error("Period must be greater than 0"));
+    }
+    if vec_data.is_empty() {
+        return Err(create_error("Data array cannot be empty"));
+    }
+    if vec_data.len() < period {
+        return Err(create_error(&format!(
+            "Data array length ({}) is less than period ({})",
+            vec_data.len(),
+            period
+        )));
     }
 
-    pub fn period(&self, period: usize) -> Vec<f64> {
-        let len = self.prices.len();
-        if len < period {
-            return vec![];
-        }
+    Ok(calculate_sma(&vec_data, period)?)
+}
 
-        let mut sma = Vec::with_capacity(len);
-        let mut window_sum: f64 = self.prices[..period].iter().sum(); // Somme initiale
+#[cfg(test)]
+mod tests {
+    use serde_wasm_bindgen::*;
+    use super::*;
 
-        for i in 0..len {
-            if i >= period {
-                // Mise à jour de la somme glissante
-                window_sum += self.prices[i] - self.prices[i - period];
-            }
+    // Test pour vérifier la validation du period
+    #[test]
+    fn test_invalid_period_zero() {
+        let data = to_value(&vec![1.0, 2.0, 3.0]).unwrap();
+        let result = simple_moving_average(data, 0);
+        assert_eq!(result, Err(JsValue::from_str("Period must be greater than 0")));
+    }
 
-            if i >= period - 1 {
-                sma.push(window_sum / period as f64);
-            } else {
-                sma.push(f64::NAN);
-            }
-        }
+    // Test pour vérifier la validation du tableau de données vide
+    #[test]
+    fn test_empty_data() {
+        let data = to_value::<Vec<f64>>(&vec![]).unwrap();
+        let result = simple_moving_average(data, 2);
+        assert_eq!(result, Err(JsValue::from_str("Data array cannot be empty")));
+    }
 
-        sma
+    // Test pour vérifier la validation lorsque la taille des données est inférieure à period
+    #[test]
+    fn test_data_length_less_than_period() {
+        let data = to_value(&vec![1.0, 2.0]).unwrap();
+        let result = simple_moving_average(data, 3);
+        assert_eq!(result, Err(JsValue::from_str("Data array length (2) is less than period (3)")));
+    }
+
+    // Test pour un cas valide avec des données et un period correct
+    #[test]
+    fn test_valid_input() {
+        let data = to_value(&vec![1.0, 2.0, 3.0, 4.0, 5.0]).unwrap();
+        let result = simple_moving_average(data, 3);
+        assert_eq!(result.unwrap(), vec![2.0, 3.0, 4.0]);
     }
 }

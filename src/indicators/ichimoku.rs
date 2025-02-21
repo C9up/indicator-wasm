@@ -1,163 +1,167 @@
 use wasm_bindgen::prelude::*;
-use crate::highest_lowest::calculate_high_low;
-use crate::low_high_open_close_volume_date_to_array::{
-    low_high_open_close_volume_date_deserialize, low_high_open_close_volume_date_to_array,
+use thiserror::Error;
+use crate::helpers::ichimoku_helper::{average_series, calculate_midline, shift_forward};
+use crate::structs::ichimoku_struct::IchimokuResult;
+use crate::low_high_open_close_volume_date_to_array_helper::{
+    low_high_open_close_volume_date_to_array,
+    MarketDataResult
 };
+use crate::{deserialize_js_value, serialize_to_js_value};
+use crate::ichimoku_helper::shift_backward;
 
-#[wasm_bindgen]
-pub struct IchimokuCloud {
-    high_prices: Vec<f64>,
-    low_prices: Vec<f64>,
-    close_prices: Vec<f64>,
+#[derive(Error, Debug)]
+pub enum IchimokuError {
+    #[error("Invalid input data: {0}")]
+    InvalidInput(String),
+    #[error("Processing error: {0}")]
+    ProcessingError(String),
+    #[error("Serialization error: {0}")]
+    SerializationError(String),
 }
 
-#[wasm_bindgen]
-pub struct IchimokuResult {
-    tenkan_sen: Vec<f64>,
-    kijun_sen: Vec<f64>,
-    senkou_span_a: Vec<f64>,
-    senkou_span_b: Vec<f64>,
-    chikou_span: Vec<f64>,
-}
-
-#[wasm_bindgen]
-impl IchimokuResult {
-    #[wasm_bindgen(getter)]
-    pub fn tenkan_sen(&self) -> Vec<f64> {
-        self.tenkan_sen.clone()
-    }
-
-    #[wasm_bindgen(getter)]
-    pub fn kijun_sen(&self) -> Vec<f64> {
-        self.kijun_sen.clone()
-    }
-
-    #[wasm_bindgen(getter)]
-    pub fn senkou_span_a(&self) -> Vec<f64> {
-        self.senkou_span_a.clone()
-    }
-
-    #[wasm_bindgen(getter)]
-    pub fn senkou_span_b(&self) -> Vec<f64> {
-        self.senkou_span_b.clone()
-    }
-
-    #[wasm_bindgen(getter)]
-    pub fn chikou_span(&self) -> Vec<f64> {
-        self.chikou_span.clone()
+impl From<IchimokuError> for JsValue {
+    fn from(error: IchimokuError) -> Self {
+        JsValue::from_str(&error.to_string())
     }
 }
 
+#[derive(Debug)]
+struct IchimokuParams {
+    period_tenkan: usize,
+    period_kijun: usize,
+    period_senkou: usize,
+}
+
+impl Default for IchimokuParams {
+    fn default() -> Self {
+        Self {
+            period_tenkan: 9,
+            period_kijun: 26,
+            period_senkou: 52,
+        }
+    }
+}
+
+impl IchimokuParams {
+    fn new(
+        period_tenkan: Option<usize>,
+        period_kijun: Option<usize>,
+        period_senkou: Option<usize>,
+    ) -> Result<Self, IchimokuError> {
+        let params = Self {
+            period_tenkan: period_tenkan.unwrap_or(Self::default().period_tenkan),
+            period_kijun: period_kijun.unwrap_or(Self::default().period_kijun),
+            period_senkou: period_senkou.unwrap_or(Self::default().period_senkou),
+        };
+
+        // Validation des paramètres
+        if params.period_tenkan == 0 || params.period_kijun == 0 || params.period_senkou == 0 {
+            return Err(IchimokuError::InvalidInput(
+                "Periods must be greater than 0".to_string(),
+            ));
+        }
+
+        Ok(params)
+    }
+}
+
+fn validate_market_data(market_data: &MarketDataResult, params: &IchimokuParams) -> Result<(), IchimokuError> {
+    if market_data.highs.len() != market_data.lows.len() {
+        return Err(IchimokuError::InvalidInput(
+            "The high and low arrays must have the same length".to_string(),
+        ));
+    }
+
+    if market_data.highs.is_empty() {
+        return Err(IchimokuError::InvalidInput(
+            "Input arrays cannot be empty".to_string(),
+        ));
+    }
+
+    if market_data.highs.len() < params.period_senkou {
+        return Err(IchimokuError::InvalidInput(
+            format!(
+                "Insufficient data: expected at least {} elements, got {}",
+                params.period_senkou,
+                market_data.highs.len()
+            )
+        ));
+    }
+
+    Ok(())
+}
+
+fn calculate_ichimoku_values(
+    market_data: &MarketDataResult,
+    params: &IchimokuParams,
+) -> Result<IchimokuResult, IchimokuError> {
+    // Calcul des composants
+    let tenkan_sen = calculate_midline(&market_data.highs, &market_data.lows, params.period_tenkan);
+    let kijun_sen = calculate_midline(&market_data.highs, &market_data.lows, params.period_kijun);
+
+    // Calcul de Senkou Span A (moyennes de Tenkan et Kijun)
+    let senkou_span_a = shift_forward(
+        &average_series(&tenkan_sen, &kijun_sen),
+        params.period_kijun
+    );
+
+    // Calcul de Senkou Span B
+    let senkou_span_b = shift_forward(
+        &calculate_midline(&market_data.highs, &market_data.lows, params.period_senkou),
+        params.period_kijun
+    );
+
+    let chikou_span = shift_backward(&market_data.closes, params.period_kijun);
+
+    Ok(IchimokuResult {
+        tenkan_sen,
+        kijun_sen,
+        senkou_span_a,
+        senkou_span_b,
+        chikou_span
+    })
+}
+
 #[wasm_bindgen]
-impl IchimokuCloud {
-    #[wasm_bindgen(constructor)]
-    pub fn new(prices: JsValue) -> Self {
-        // Convert input data into segments (highs, lows, closes)
-        let segment = low_high_open_close_volume_date_deserialize(
-            low_high_open_close_volume_date_to_array(prices)
-                .expect("Failed to convert market data"),
-        );
-        IchimokuCloud {
-            high_prices: segment.highs,
-            low_prices: segment.lows,
-            close_prices: segment.closes,
-        }
-    }
+pub fn ichimoku(
+    data: JsValue,
+    period_tenkan: Option<usize>,
+    period_kijun: Option<usize>,
+    period_senkou: Option<usize>,
+) -> Result<JsValue, JsValue> {
+    // Initialisation et validation des paramètres
+    let params = IchimokuParams::new(period_tenkan, period_kijun, period_senkou)
+        .map_err(|e| e.to_string())?;
 
-    /// Utility method to calculate the average of two values
-    fn calculate_average(&self, a: f64, b: f64) -> f64 {
-        (a + b) / 2.0
-    }
+    // Traitement des données d'entrée
+    let processed_data = low_high_open_close_volume_date_to_array(data)
+        .map_err(|e| IchimokuError::ProcessingError(e.as_string().unwrap_or_default()))?;
 
-    /// Calculates the Ichimoku Cloud components using:
-    /// - `tenkan_period` for Tenkan-sen (conversion line)
-    /// - `kijun_period` for Kijun-sen (base line)
-    /// - `senkou_span_b_period` for Senkou Span B (delayed span)
-    ///
-    /// Chikou Span is calculated with a fixed 26-period shift.
-    pub fn calculate(
-        &self,
-        tenkan_period: usize,
-        kijun_period: usize,
-        senkou_span_b_period: usize,
-    ) -> IchimokuResult {
-        let len = self.high_prices.len();
+    let market_data: MarketDataResult = deserialize_js_value(&processed_data)
+        .map_err(|e| IchimokuError::SerializationError(e.as_string().unwrap_or_default()))?;
 
-        // Ensure there is enough data for calculations.
-        // Here, we require at least enough data for Senkou Span B and the Chikou Span shift.
-        if len < senkou_span_b_period || len < tenkan_period || len < kijun_period || len < 26 {
-            return IchimokuResult {
-                tenkan_sen: Vec::new(),
-                kijun_sen: Vec::new(),
-                senkou_span_a: Vec::new(),
-                senkou_span_b: Vec::new(),
-                chikou_span: Vec::new(),
-            };
-        }
+    // Validation des données
+    validate_market_data(&market_data, &params)?;
 
-        // Start calculation at index (senkou_span_b_period - 1),
-        // which is the first index where we can calculate Senkou Span B.
-        let start_index = senkou_span_b_period - 1;
-        let mut tenkan_sen = Vec::with_capacity(len - start_index);
-        let mut kijun_sen = Vec::with_capacity(len - start_index);
-        let mut senkou_span_b = Vec::with_capacity(len - start_index);
+    // Calcul des valeurs Ichimoku
+    let result = calculate_ichimoku_values(&market_data, &params)?;
 
-        // Single loop calculation for Tenkan-sen, Kijun-sen, and Senkou Span B
-        for i in start_index..len {
-            // Calculate Tenkan-sen if enough data is available
-            if i >= tenkan_period - 1 {
-                let window_start = i + 1 - tenkan_period;
-                let (highest, lowest) =
-                    calculate_high_low(&self.high_prices, &self.low_prices, window_start, i);
-                tenkan_sen.push(self.calculate_average(highest, lowest));
-            } else {
-                tenkan_sen.push(f64::NAN);
-            }
+    // Sérialisation du résultat
+    serialize_to_js_value(&result)
+        .map_err(|e| IchimokuError::SerializationError(e.as_string().unwrap_or_default()).into())
+}
 
-            // Calculate Kijun-sen if enough data is available
-            if i >= kijun_period - 1 {
-                let window_start = i + 1 - kijun_period;
-                let (highest, lowest) =
-                    calculate_high_low(&self.high_prices, &self.low_prices, window_start, i);
-                kijun_sen.push(self.calculate_average(highest, lowest));
-            } else {
-                kijun_sen.push(f64::NAN);
-            }
+#[cfg(test)]
+mod tests {
+    use super::*;
 
-            // Calculate Senkou Span B (always calculable in this loop)
-            let window_start = i + 1 - senkou_span_b_period;
-            let (highest, lowest) =
-                calculate_high_low(&self.high_prices, &self.low_prices, window_start, i);
-            senkou_span_b.push(self.calculate_average(highest, lowest));
-        }
+    #[test]
+    fn test_ichimoku_params_validation() {
+        assert!(IchimokuParams::new(Some(0), Some(26), Some(52)).is_err());
+        assert!(IchimokuParams::new(Some(9), Some(0), Some(52)).is_err());
+        assert!(IchimokuParams::new(Some(9), Some(26), Some(0)).is_err());
 
-        // Calculate Senkou Span A: it is the average of Tenkan-sen and Kijun-sen,
-        // shifted forward by 26 periods.
-        let mut senkou_span_a = Vec::with_capacity(tenkan_sen.len());
-        for i in 0..tenkan_sen.len() {
-            if i < 26 {
-                senkou_span_a.push(f64::NAN);
-            } else {
-                senkou_span_a.push(self.calculate_average(tenkan_sen[i], kijun_sen[i]));
-            }
-        }
-
-        // Calculate Chikou Span (lagging line): shift the closing price by 26 periods.
-        let mut chikou_span = Vec::with_capacity(len);
-        for i in 0..len {
-            if i < 26 {
-                chikou_span.push(f64::NAN);
-            } else {
-                chikou_span.push(self.close_prices[i - 26]);
-            }
-        }
-
-        IchimokuResult {
-            tenkan_sen,
-            kijun_sen,
-            senkou_span_a,
-            senkou_span_b,
-            chikou_span,
-        }
+        let valid_params = IchimokuParams::new(Some(9), Some(26), Some(52));
+        assert!(valid_params.is_ok());
     }
 }

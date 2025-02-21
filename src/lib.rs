@@ -1,8 +1,9 @@
 mod graphs;
 mod indicators;
-mod helper;
-mod structures;
+mod helpers;
+mod structs;
 
 pub use graphs::*;
-pub use helper::*;
+pub use helpers::*;
 pub use indicators::*;
+pub use structs::*;

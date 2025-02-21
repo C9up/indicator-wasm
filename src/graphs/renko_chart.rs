@@ -1,57 +1,40 @@
 use wasm_bindgen::prelude::*;
+use crate::{create_error, serialize_to_js_value};
 
-#[wasm_bindgen]
-pub struct RenkoChart {
-    prices: Vec<f64>,
+mod helpers {
+    #[inline(always)]
+    pub fn compute_brick_count(diff: f64, brick_size: f64) -> i32 {
+        (diff.abs() / brick_size).floor() as i32
+    }
 }
 
 #[wasm_bindgen]
-impl RenkoChart {
-    #[wasm_bindgen(constructor)]
-    pub fn new(prices: Vec<f64>) -> Self {
-        RenkoChart { prices }
+pub fn renko_chart(prices: Vec<f64>, brick_size: f64) -> Result<JsValue, JsValue> {
+
+    // Validate input: reversal_amount must be greater than 0
+    if brick_size <= 0.0 {
+        return Err(create_error("brick_size amount must be greater than 0."));
+    }
+    // Validate input: prices vector must not be empty
+    if prices.is_empty() {
+        return Err(create_error("Prices vector must not be empty."));
     }
 
-    pub fn calculate(&mut self, brick_size: f64) -> Vec<f64> {
-        if self.prices.is_empty() {
-            return vec![]; // No data to process
-        }
+    let mut result = Vec::with_capacity(prices.len() * 2);
+    let mut last_price = prices[0];
+    result.push(last_price);
 
-        let mut bricks = Vec::new();
-        let mut last_brick = self.prices[0];
-        bricks.push(last_brick);
-
-        let mut trend: i32 = 0; // 1 for uptrend, -1 for downtrend
-
-        for &price in &self.prices[1..] {
-            let price_diff = price - last_brick;
-
-            if (trend >= 0 && price_diff >= brick_size) || (trend < 0 && price_diff <= -brick_size) {
-                self.add_bricks(&mut bricks, &mut last_brick, price_diff, brick_size, trend);
-                trend = if price_diff >= brick_size { 1 } else { -1 };
-            } else if (trend >= 0 && price_diff <= -brick_size) || (trend < 0 && price_diff >= brick_size) {
-                self.add_bricks(&mut bricks, &mut last_brick, price_diff, brick_size, -trend);
-                trend = if price_diff >= brick_size { 1 } else { -1 };
+    for price in prices.into_iter() {
+        let diff = price - last_price;
+        if diff.abs() >= brick_size {
+            let brick_count = helpers::compute_brick_count(diff, brick_size);
+            let direction = diff.signum();
+            for _ in 0..brick_count {
+                last_price += direction * brick_size;
+                result.push(last_price);
             }
         }
-
-        bricks
     }
 
-    fn add_bricks(
-        &self,
-        bricks: &mut Vec<f64>,
-        last_brick: &mut f64,
-        price_diff: f64,
-        brick_size: f64,
-        trend: i32,
-    ) {
-        let num_bricks = (price_diff.abs() / brick_size).floor() as i32;
-        let step = brick_size * trend as f64;
-
-        for _ in 0..num_bricks {
-            *last_brick += step;
-            bricks.push(*last_brick);
-        }
-    }
+    Ok(serialize_to_js_value(&result)?)
 }

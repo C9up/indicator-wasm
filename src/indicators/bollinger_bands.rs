@@ -1,70 +1,43 @@
+
 use wasm_bindgen::prelude::*;
-use crate::calculate_sma::calculate_sma;
+use crate::{create_error, deserialize_js_value, serialize_to_js_value};
+use crate::helpers::bollinger_bands_helper::compute_bollinger_bands;
 
+/// WASM-exposed function that calculates Bollinger Bands.
+///
+/// - `data`: JS array (`number[]`) containing price values.
+/// - `period`: number of periods for the moving average.
+/// - `multiplier`: coefficient (often 2) for calculating the upper and lower bands.
+///
+/// Returns a serialized JS object containing three arrays of numbers.
 #[wasm_bindgen]
-pub struct BollingerBands {
-    prices: Vec<f64>
-}
+pub fn bollinger_bands(
+    data: &JsValue,
+    period: Option<usize>,
+    multiplier: Option<f64>
+) -> Result<JsValue, JsValue> {
 
-#[wasm_bindgen]
-pub struct BollingerBandsResult {
-    middle_band: Vec<f64>,
-    upper_band: Vec<f64>,
-    lower_band: Vec<f64>,
-}
+    // Default values
+    let period = period.unwrap_or(20);
+    let multiplier = multiplier.unwrap_or(2f64);
+    let prices: Vec<f64> = deserialize_js_value(data)?;
 
-#[wasm_bindgen]
-impl BollingerBands {
-
-    #[wasm_bindgen(constructor)]
-    pub fn new(prices: Vec<f64>) -> Self {
-        BollingerBands {
-            prices
-        }
+    if period <= 0 {
+        return Err(create_error("Period must be greater than 0."));
     }
 
-    fn calculate_std_dev(&self, data: &[f64], sma: &[f64], period: usize) -> Vec<f64> {
-        let mut std_dev = Vec::new();
-        for i in (period - 1)..data.len() {
-            let mean = sma[i - (period - 1)];
-            let variance: f64 = data[(i - period + 1)..=i]
-                .iter()
-                .map(|&x| (x - mean).powi(2))
-                .sum::<f64>()
-                / period as f64;
-            std_dev.push(variance.sqrt());
-        }
-        std_dev
+    if multiplier <= 0.0 {
+        return Err(create_error("Multiplier must be greater than 0."));
     }
 
-    pub fn calculate(&mut self, period: usize, multiplier: f64) {
-        let mut middle_band = Vec::new();
-        let mut upper_band = Vec::new();
-        let mut lower_band = Vec::new();
-
-        let len = self.prices.len();
-        if len < period {
-            return; // Not enough data to calculate Bollinger Bands
-        }
-
-        // Calculate the Middle Band (SMA)
-        middle_band = calculate_sma(&self.prices, period);
-
-        // Calculate the Standard Deviation
-        let std_dev = self.calculate_std_dev(&self.prices, &middle_band, period);
-
-        // Calculate the Upper and Lower Bands
-        for i in 0..middle_band.len() {
-            let upper = middle_band[i] + (std_dev[i] * multiplier);
-            let lower = middle_band[i] - (std_dev[i] * multiplier);
-            upper_band.push(upper);
-            lower_band.push(lower);
-        }
-
-        BollingerBandsResult {
-            middle_band,
-            upper_band,
-            lower_band,
-        };
+    // Validate input: prices vector must not be empty
+    if prices.is_empty() {
+        return Err(create_error("Prices vector must not be empty."));
     }
+
+    // Compute Bollinger Bands using the helper function
+    let result = compute_bollinger_bands(&prices, period, multiplier);
+
+    // Serialize the result into JsValue (a JS object with 3 properties containing number[])
+    Ok(serialize_to_js_value(&result)?)
 }
