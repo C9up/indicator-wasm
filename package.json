@@ -1,6 +1,6 @@
 {
   "name": "technical-indicators-wasm",
-  "version": "1.3.0",
+  "version": "1.3.1",
   "description": "A Rust-based indicator and Charts library compiled to WebAssembly.",
   "type": "module",
   "main": "dist/index.js",
@@ -45,7 +45,7 @@
   "homepage": "https://github.com/C9up/technical-indicators-wasm",
   "files": [
     "dist/index.js",
-    "dist/index.d.js",
+    "dist/index.d.ts",
     "dist/node/technical_indicators_wasm.js",
     "dist/node/technical_indicators_wasm_bg.js",
     "dist/node/technical_indicators_wasm_bg.wasm"
